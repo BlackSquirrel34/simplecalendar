@@ -6,6 +6,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin, { Draggable, DropArg } from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid' 
 import { Fragment, useEffect, useState } from 'react'
+import { constants } from "node:fs/promises";
+import { Dialog, Transition } from "@headlessui/react";
 
 interface Event {
   title: string;
@@ -35,19 +37,37 @@ export default function Home() {
 
   // Drag and Drop
   useEffect(() => {
-    let draggableEl = document.getElementById('draggable-el')
+    const draggableEl = document.getElementById('draggable-el')
     if (draggableEl) {
       new Draggable(draggableEl, {
         itemSelector: ".fc-event",
         eventData: function (eventEl) {
-          let title = eventEl.getAttribute("title")
-          let id = eventEl.getAttribute("data")
-          let start = eventEl.getAttribute("start")
+          const title = eventEl.getAttribute("title")
+          const id = eventEl.getAttribute("data")
+          const start = eventEl.getAttribute("start")
           return { title, id, start }
         }
       })
     }
   }, [])
+
+  function handleDateClick(arg: {date: Date, allDay: boolean}){
+    setNewEvent({...newEvent, start: arg.date, allDay: arg.allDay, id: new Date().getTime()})
+    setShowModal(true)
+  }
+
+  function addEvent(data: DropArg) {
+    // console.log("DATA", data)
+    const event = {... newEvent, start: data.date.toISOString(), title: data.draggedEl.innerText,
+      allDay: data.allDay, id: new Date().getTime()
+    }
+    setAllEvents([...allEvents, event])
+  }
+
+  function handleDeleteModal(data: {event: {id: string}}){
+    setShowDeleteModal(true)
+    setIdToDelete(Number(data.event.id))
+  }
 
   return (
     <>
@@ -75,9 +95,9 @@ export default function Home() {
               droppable={true}
               selectable={true}
               selectMirror={true}
-              // dateClick={{}}
-              // drop={}
-              // eventClick={}
+              dateClick={handleDateClick}
+              drop={(data) => addEvent(data)}
+              eventClick={(data) => handleDeleteModal(data)}
             />
           </div>
             <div id="draggable-el" className="ml-8 w-full border-2 p-2 rounded-md mt-16 lg:h-1/2 bg-violet-50">
@@ -94,6 +114,26 @@ export default function Home() {
             </div>
         
        </div>
+
+
+        <Transition.Root show={showDeleteModal} as={Fragment}>
+          <Dialog as="div" className="relative z-10" onClose={setShowDeleteModal}>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+
+            >
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+            </Transition.Child>
+          </Dialog>
+        </Transition.Root>  
+
+            
     </main>
     </>
   );
